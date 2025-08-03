@@ -42,5 +42,18 @@ namespace BlockChain_Example.Models
             }
             return true;
         }
+
+        public decimal GetBalance(string address) { 
+            decimal balance = 0;
+            foreach (var block in Chain)
+            {
+                foreach (var transaction in block.Transactions)
+                {
+                    if (transaction.Sender == address) balance -= transaction.Amount;
+                    if (transaction.Receiver == address) balance += transaction.Amount;
+                }
+            }
+            return balance;
+        }
     }
 }

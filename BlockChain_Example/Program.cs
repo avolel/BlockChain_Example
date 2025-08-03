@@ -1,63 +1,96 @@
 ﻿using BlockChain_Example.Models;
 using BlockChain_Example.Models.SmartContracts;
 
-// Create a new blockchain
-BlockChain chain = new BlockChain();
-chain.Difficulty = 2; // Adjust difficulty as needed
+Dictionary<string, Wallet> wallets = new();
+BlockChain chain = new();
+chain.Difficulty = 2;
 
-// Add some initial transactions
-chain.AddTransaction(new Transaction("Buju", "Bounty", 10));
-chain.AddTransaction(new Transaction("Lyn", "Andy", 5));
-chain.AddTransaction(new Transaction("Shabba", "Sean", 2));
+bool running = true;
 
-// Mine the first block (initial mining)
-Console.WriteLine("Mining initial block...");
-chain.MinePendingTransactions("Miner1");
-
-// Add more transactions
-chain.AddTransaction(new Transaction("Bob", "Grace", 3));
-chain.AddTransaction(new Transaction("Machel", "Ivy", 7));
-
-// Mine the second block
-Console.WriteLine("\nMining second block...");
-chain.MinePendingTransactions("Miner2");
-
-// Execute a simple smart contract (airdrop)
-AirDropContract airDrop = new AirDropContract("Doug", 15);
-Console.WriteLine("\nExecuting Airdrop Contract...");
-airDrop.Execute(chain);
-
-// Mine the third block (including the airdrop transaction)
-Console.WriteLine("\nMining third block...");
-chain.MinePendingTransactions("Miner3");
-
-// Validate the chain
-Console.WriteLine("\nValidating Blockchain...");
-if (chain.IsChainValid())
+while(running)
 {
-    Console.WriteLine("Blockchain is valid.");
-}
-else
-{
-    Console.WriteLine("Blockchain is NOT valid!");
-}
+    Console.WriteLine("\n=== Blockchain CLI Menu ===");
+    Console.WriteLine("1. Create Wallet");
+    Console.WriteLine("2. View Wallet Balance");
+    Console.WriteLine("3. Create Transaction");
+    Console.WriteLine("4. Mine Block");
+    Console.WriteLine("5. View Chain");
+    Console.WriteLine("6. Air Drop");
+    Console.WriteLine("7. Exit");
+    Console.Write("Select an option: ");
+    string choice = Console.ReadLine();
 
-// Print the blockchain contents for verification
-Console.WriteLine("\nBlockchain Contents:");
-foreach (var block in chain.Chain)
-{
-    Console.WriteLine($"Block {block.Index}:");
-    Console.WriteLine($"  Previous Hash: {block.PreviousHash}");
-    Console.WriteLine($"  Timestamp: {block.TimeStamp}");
-    Console.WriteLine($"  Merkle Root: {block.MerkleRoot}");
-    Console.WriteLine("  Transactions:");
-    foreach (var transaction in block.Transactions)
+    switch (choice)
     {
-        Console.WriteLine($"    {transaction}");
-    }
-    Console.WriteLine($"  Hash: {block.Hash}");
-    Console.WriteLine($"  Nonce: {block.Nonce}");
-    Console.WriteLine();
-}
+        case "1":
+            Console.Write("Enter wallet name: ");
+            string walletName = Console.ReadLine();
+            if (!wallets.ContainsKey(walletName))
+            {
+                wallets[walletName] = new Wallet(walletName);
+                Console.WriteLine($"Wallet '{walletName}' created.");
+            }
+            else
+                Console.WriteLine($"Wallet '{walletName}' already exists.");
+            break;
+        case "2":
+            Console.Write("Enter wallet name: ");
+            var wallet = Console.ReadLine();
+            if (wallets.ContainsKey(wallet))
+            {
+                var balance = chain.GetBalance(wallet);
+                Console.WriteLine($"Balance of {wallet}: {balance}");
+            }
+            else Console.WriteLine("Wallet not found.");
+            break;
+        case "3":
+            Console.Write("Sender: ");
+            var sender = Console.ReadLine();
+            Console.Write("Receiver: ");
+            var receiver = Console.ReadLine();
+            Console.Write("Amount: ");
+            if (!decimal.TryParse(Console.ReadLine(), out var amount)) { Console.WriteLine("Invalid amount."); break; }
 
-Console.ReadKey(); // Keep the console window open until a key is pressed
+            if (!wallets.ContainsKey(sender)) { Console.WriteLine("Sender wallet not found."); break; }
+            if (chain.GetBalance(sender) < amount) { Console.WriteLine("Insufficient balance."); break; }
+
+            var tx = wallets[sender].CreateTransaction(receiver, amount);
+            chain.AddTransaction(tx);
+            Console.WriteLine("Transaction added.");
+            break;
+        case "4":
+            Console.Write("Enter miner address: ");
+            var miner = Console.ReadLine();
+            chain.MinePendingTransactions(miner);
+            Console.WriteLine("Block mined!");
+            break;
+        case "5":
+            Console.WriteLine("\n=== Blockchain Contents ===");
+            foreach (var block in chain.Chain)
+            {
+                Console.WriteLine($"\nBlock {block.Index}");
+                Console.WriteLine($"  Hash: {block.Hash}");
+                Console.WriteLine($"  Prev: {block.PreviousHash}");
+                Console.WriteLine($"  Timestamp: {block.TimeStamp}");
+                foreach (var tx2 in block.Transactions)
+                    Console.WriteLine($"    {tx2}");
+            }
+            break;
+        case "6":
+            Console.Write("Airdrop receiver: ");
+            var dropTarget = Console.ReadLine();
+            Console.Write("Airdrop amount: ");
+            if (!decimal.TryParse(Console.ReadLine(), out var dropAmount)) { Console.WriteLine("Invalid amount."); break; }
+
+            var contract = new AirDropContract(dropTarget, dropAmount);
+            contract.Execute(chain);
+            Console.WriteLine("Airdrop added. Mine the block to finalize.");
+            break;
+        case "7":
+            running = false;
+            break;
+        default:
+            Console.WriteLine("Invalid choice, please try again.");
+            break;
+    }
+}
