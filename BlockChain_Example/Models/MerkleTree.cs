@@ -5,7 +5,7 @@ namespace BlockChain_Example.Models
 {
     public static class MerkleTree
     {
-        public static string ComputeMerkleRoot(List<Transaction> transactions)
+        public static string ComputeMerkleRoot(List<SignedTransaction> transactions)
         {
             List<string> hashes = transactions.Select(tx => Hash(tx.ToString())).ToList();
             while (hashes.Count > 1) {

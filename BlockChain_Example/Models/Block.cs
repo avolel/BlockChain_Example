@@ -5,7 +5,7 @@ namespace BlockChain_Example.Models
 {
     public class Block
     {
-        public List<Transaction> Transactions { get; set; }
+        public List<SignedTransaction> Transactions { get; set; }
         public string MerkleRoot { get; set; }
         public int Index { get; set; }
         public DateTime TimeStamp { get; set; }
@@ -13,7 +13,7 @@ namespace BlockChain_Example.Models
         public string Hash { get; set; }
         public int Nonce { get; set; }
 
-        public Block(int index, DateTime timestamp, List<Transaction> transactions, 
+        public Block(int index, DateTime timestamp, List<SignedTransaction> transactions, 
             string previousHash = "")
         {
             Index = index;

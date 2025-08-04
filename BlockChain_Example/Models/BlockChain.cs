@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using BlockChain_Example.Models.Security;
 
 namespace BlockChain_Example.Models
 {
@@ -6,26 +6,43 @@ namespace BlockChain_Example.Models
     {
         public List<Block> Chain { get; set; } = new();
         public int Difficulty { get; set; } = 2;
-        public List<Transaction> pending_transactions { get; set; } = new();
+        public List<SignedTransaction> pending_transactions { get; set; } = new();
+        public decimal TransactionFee { get; set; } = 0.01m;
+
+        public BlockChain()
+        {
+           Chain.Add(CreateGenesisBlock());
+        }
+
+        private Block CreateGenesisBlock() {
+            return new Block(0, DateTime.UtcNow, new List<SignedTransaction>(), "0");
+        }
 
         public Block GetLatestBlock() =>
-            Chain[Chain.Count - 1];
+            Chain.Last();
 
         public void AddBlock(Block new_block)
         {
-            new_block.PreviousHash = GetLatestBlock().Hash;
-            new_block.Hash = new_block.CalculateHash();
+            if (new_block.PreviousHash != GetLatestBlock().Hash)
+                throw new InvalidOperationException("Invalid previous hash.");
+            if (new_block.Hash != new_block.CalculateHash())
+                throw new InvalidOperationException("Invalid block hash.");
             Chain.Add(new_block);
         }
 
-        public void AddTransaction(Transaction transaction) =>
-            pending_transactions.Add(transaction);
-
-        public void MinePendingTransactions(string minerAddress)
+        public void AddTransaction(SignedTransaction transaction)
         {
-            var reward = new Transaction("System", minerAddress, 1);
-            pending_transactions.Add(reward);
-            var block = new Block(Chain.Count, DateTime.UtcNow, new List<Transaction>(pending_transactions), (Chain.Count != 0) ? GetLatestBlock().Hash : "");
+            if(!TransactionVerifier.IsValidTransaction(transaction))
+                throw new InvalidOperationException("Invalid transaction signature.");
+            pending_transactions.Add(transaction);
+        }
+
+        public void MinePendingTransactions(string minerPublicKey)
+        {
+            decimal totalFees = pending_transactions.Count * TransactionFee;
+            var rewardTransaction = new SignedTransaction("System", minerPublicKey, 1 + totalFees, ""); //Transactions from the system do not require a signature
+            pending_transactions.Add(rewardTransaction);
+            Block block = new Block(Chain.Count, DateTime.UtcNow, new List<SignedTransaction>(pending_transactions), GetLatestBlock().Hash);
             block.MineBlock(Difficulty);
             Chain.Add(block);
             pending_transactions.Clear();
@@ -33,12 +50,18 @@ namespace BlockChain_Example.Models
 
         public bool IsChainValid()
         {
-            for (int i = 1; i < Chain.Count; i++)
-            {
-                Block current = Chain[i];
-                Block previous = Chain[i - 1];
-                if(current.Hash != current.CalculateHash()) return false;
-                if(current.PreviousHash != previous.Hash) return false;
+            for (int i = 1; i < Chain.Count; i++) {
+                var current_block = Chain[i];
+                var previous_block = Chain[i - 1];
+                if(current_block.Hash != current_block.CalculateHash())
+                    return false;
+                if(current_block.PreviousHash != previous_block.Hash)
+                    return false;
+
+                foreach (var transaction in current_block.Transactions) { 
+                    if(transaction.SenderPublicKey != "System" && !TransactionVerifier.IsValidTransaction(transaction))
+                        return false;
+                }
             }
             return true;
         }
@@ -49,7 +72,7 @@ namespace BlockChain_Example.Models
             {
                 foreach (var transaction in block.Transactions)
                 {
-                    if (transaction.Sender == address) balance -= transaction.Amount;
+                    if (transaction.SenderPublicKey == address) balance -= transaction.Amount;
                     if (transaction.Receiver == address) balance += transaction.Amount;
                 }
             }

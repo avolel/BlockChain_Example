@@ -13,11 +13,11 @@
 
         public void Execute(BlockChain chain)
         {
-            chain.AddTransaction(new Transaction(
-                "System",
-                Receiver,
-                Amount
-            ));
+            //chain.AddTransaction(new SignedTransaction(
+            //    "System",
+            //    Receiver,
+            //    Amount
+            //));
         }
     }
 }
